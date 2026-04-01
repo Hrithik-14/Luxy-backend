@@ -1,4 +1,5 @@
 const Mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const { ROLES, EMAIL_PROVIDER } = require('../constants');
 
@@ -54,6 +55,19 @@ const UserSchema = new Schema({
   created: {
     type: Date,
     default: Date.now
+  }
+});
+
+// Pre-save hook to hash password only if modified
+UserSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
   }
 });
 

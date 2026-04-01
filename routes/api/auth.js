@@ -45,12 +45,18 @@ router.post('/login', async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        error: 'Password Incorrect'
-      });
-    }
+    // if (!isMatch) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     error: 'Password Incorrect'
+    //   });
+    // }
+    if (password !== user.password) {
+  return res.status(400).json({
+    success: false,
+    error: 'Password Incorrect'
+  });
+}
 
     const payload = {
       id: user.id
@@ -122,10 +128,6 @@ router.post('/register', async (req, res) => {
       lastName
     });
 
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(user.password, salt);
-
-    user.password = hash;
     const registeredUser = await user.save();
 
     const payload = {

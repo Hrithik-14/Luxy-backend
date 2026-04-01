@@ -1,12 +1,13 @@
 const router = require('express').Router();
 
+const authRoutes = require('./auth');
 const productRoutes = require('./product');
 const categoryRoutes = require('./category');
 
 const bannerRoutes = require('./banner');
 
 // auth routes
-// router.use('/auth', authRoutes);
+router.use('/auth', authRoutes);
 
 // // user routes
 // router.use('/user', userRoutes);

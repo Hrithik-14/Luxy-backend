@@ -4,6 +4,7 @@ const Banner = require('../../models/banner');
 const auth = require('../../middleware/auth');
 const role = require('../../middleware/role');
 const { ROLES } = require('../../constants');
+const cloudinary = require('../../config/cloudinary');
 
 // GET all banners (public or admin)
 router.get('/', async (req, res) => {
@@ -16,15 +17,28 @@ router.get('/', async (req, res) => {
 });
 
 // POST add banner
-router.post('/add', auth, role.check(ROLES.Admin, ROLES.Merchant), async (req, res) => {
+router.post('/add', auth,  async (req, res) => {
   try {
     const { desktopImage, mobileImage } = req.body;
 
     if (!desktopImage || !mobileImage) {
       return res.status(400).json({ error: 'You must provide both desktop and mobile images.' });
     }
+      const desktopUpload = await cloudinary.uploader.upload(desktopImage, {
+      folder: 'banners/desktop'
+    });
 
-    const banner = new Banner({ desktopImage, mobileImage });
+    // ✅ Upload mobile image
+    const mobileUpload = await cloudinary.uploader.upload(mobileImage, {
+      folder: 'banners/mobile'
+    });
+
+
+    // const banner = new Banner({ desktopImage, mobileImage });
+     const banner = new Banner({
+      desktopImage: desktopUpload.secure_url,
+      mobileImage: mobileUpload.secure_url
+    });
     const savedBanner = await banner.save();
 
     res.status(200).json({
@@ -38,7 +52,7 @@ router.post('/add', auth, role.check(ROLES.Admin, ROLES.Merchant), async (req, r
 });
 
 // DELETE banner
-router.delete('/delete/:id', auth, role.check(ROLES.Admin, ROLES.Merchant), async (req, res) => {
+router.delete('/delete/:id', auth,  async (req, res) => {
   try {
     const banner = await Banner.deleteOne({ _id: req.params.id });
 
@@ -53,7 +67,7 @@ router.delete('/delete/:id', auth, role.check(ROLES.Admin, ROLES.Merchant), asyn
 });
 
 // PUT update banner active status or details
-router.put('/:id', auth, role.check(ROLES.Admin, ROLES.Merchant), async (req, res) => {
+router.put('/:id', auth,async (req, res) => {
   try {
     const bannerId = req.params.id;
     const update = req.body.banner;
