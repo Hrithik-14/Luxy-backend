@@ -5,7 +5,7 @@ require('dotenv').config();
 const User = require('./models/user');
 const { ROLES } = require('./constants');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/mern_ecommerce';
+const MONGO_URI = process.env.MONGO_URI;
 
 // const seedAdmin = async () => {
 //   try {
