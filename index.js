@@ -19,28 +19,7 @@ app.use(
     frameguard: true
   })
 );
-// app.use(cors());
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  process.env.ADMIN_URL,
-  process.env.CLIENT_URL_PROD,
-  process.env.ADMIN_URL_PROD
-];
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true
-  })
-);
-
+app.use(cors());
 
 setupDB();
 require('./config/passport')(app);
