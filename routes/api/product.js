@@ -19,13 +19,17 @@ const cloudinary = require('../../config/cloudinary');
 // });
 router.get('/', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    // support both ?page= and ?skip= from different clients
+    const skip = req.query.skip !== undefined
+      ? parseInt(req.query.skip)
+      : ((parseInt(req.query.page) || 1) - 1) * limit;
 
     const products = await Product.find({})
       .populate('category', 'name')
+      .populate('subcategory', 'name')
       .limit(limit)
-      .skip((page - 1) * limit);
+      .skip(skip);
 
     res.status(200).json({ products });
   } catch (error) {
@@ -35,7 +39,9 @@ router.get('/', async (req, res) => {
 // GET product by slug (public storefront) - MUST come before /:id
 router.get('/item/:slug', async (req, res) => {
   try {
-    const product = await Product.findOne({ slug: req.params.slug, isActive: true }).populate('category', 'name');
+    const product = await Product.findOne({ slug: req.params.slug, isActive: true })
+      .populate('category', 'name')
+      .populate('subcategory', 'name');
     if (!product) return res.status(404).json({ message: 'No product found.' });
     res.status(200).json({ product });
   } catch (error) {
@@ -90,7 +96,7 @@ router.get('/item/:slug', async (req, res) => {
 
 router.post('/add', auth, role.check(ROLES.Admin, ROLES.Merchant, ROLES.Member), async (req, res) => {
   try {
-    const { name, description, category, variants } = req.body;
+    const { name, description, category, subcategory, variants } = req.body;
 
     if (!name || !description) {
       return res.status(400).json({ error: 'Name and description are required.' });
@@ -100,30 +106,30 @@ router.post('/add', auth, role.check(ROLES.Admin, ROLES.Merchant, ROLES.Member),
       return res.status(400).json({ error: 'At least one variant is required.' });
     }
 
-    // Upload images to Cloudinary
+    // Upload images array to Cloudinary
     const updatedVariants = [];
-
     for (const v of variants) {
-      let imageUrl = v.image;
-
-      if (v.image) {
-        const upload = await cloudinary.uploader.upload(v.image, {
-          folder: 'products'
-        });
-
-        imageUrl = upload.secure_url;
+      const uploadedImages = [];
+      const imgs = Array.isArray(v.images) ? v.images : [];
+      for (const img of imgs) {
+        if (img && img.startsWith('data:image')) {
+          const upload = await cloudinary.uploader.upload(img, { folder: 'products' });
+          uploadedImages.push(upload.secure_url);
+        } else if (img) {
+          uploadedImages.push(img);
+        }
       }
-
-      updatedVariants.push({
-        ...v,
-        image: imageUrl
-      });
+      updatedVariants.push({ ...v, images: uploadedImages });
     }
+
+    // Ensure one default
+    if (!updatedVariants.some(v => v.isDefault)) updatedVariants[0].isDefault = true;
 
     const product = new Product({
       name,
       description,
       category: category || null,
+      subcategory: subcategory || null,
       variants: updatedVariants
     });
 
@@ -147,7 +153,7 @@ router.post('/add', auth, role.check(ROLES.Admin, ROLES.Merchant, ROLES.Member),
 // PUT update product
 router.put('/update/:id', auth, role.check(ROLES.Admin, ROLES.Merchant, ROLES.Member), async (req, res) => {
   try {
-    const { name, description, category, variants, isActive } = req.body;
+    const { name, description, category, subcategory, variants, isActive } = req.body;
 
     if (variants) {
       const colors = variants.map(v => v.color?.toLowerCase());
@@ -164,32 +170,27 @@ router.put('/update/:id', auth, role.check(ROLES.Admin, ROLES.Merchant, ROLES.Me
     if (name !== undefined) product.name = name;
     if (description !== undefined) product.description = description;
     if (category !== undefined) product.category = category || null;
+    if (subcategory !== undefined) product.subcategory = subcategory || null;
     if (isActive !== undefined) product.isActive = isActive;
     // if (variants !== undefined) product.variants = variants;
     if (variants !== undefined) {
-  const updatedVariants = [];
-
-  for (const v of variants) {
-    let imageUrl = v.image;
-
-    // ✅ If new image (base64), upload to Cloudinary
-    if (v.image && v.image.startsWith('data:image')) {
-      const upload = await cloudinary.uploader.upload(v.image, {
-        folder: 'products'
-      });
-
-      imageUrl = upload.secure_url;
+      const updatedVariants = [];
+      for (const v of variants) {
+        const uploadedImages = [];
+        const imgs = Array.isArray(v.images) ? v.images : [];
+        for (const img of imgs) {
+          if (img && img.startsWith('data:image')) {
+            const upload = await cloudinary.uploader.upload(img, { folder: 'products' });
+            uploadedImages.push(upload.secure_url);
+          } else if (img) {
+            uploadedImages.push(img);
+          }
+        }
+        updatedVariants.push({ ...v, images: uploadedImages });
+      }
+      if (!updatedVariants.some(v => v.isDefault)) updatedVariants[0].isDefault = true;
+      product.variants = updatedVariants;
     }
-
-    // ✅ If already URL, keep as it is
-    updatedVariants.push({
-      ...v,
-      image: imageUrl
-    });
-  }
-
-  product.variants = updatedVariants;
-}
     product.updated = new Date();
 
     const updated = await product.save();
@@ -213,7 +214,9 @@ router.delete('/delete/:id', auth, role.check(ROLES.Admin, ROLES.Merchant, ROLES
 // GET single product by id (admin) - MUST be last to avoid shadowing other /:id routes
 router.get('/:id',async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate('category', 'name');
+    const product = await Product.findById(req.params.id)
+      .populate('category', 'name')
+      .populate('subcategory', 'name');
     if (!product) return res.status(404).json({ message: 'No product found.' });
     res.status(200).json({ product });
   } catch (error) {

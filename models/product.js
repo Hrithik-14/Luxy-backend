@@ -20,6 +20,7 @@ const ProductSchema = new Schema({
   slug: { type: String, slug: 'name', unique: true },
   description: { type: String, trim: true },
   category: { type: Schema.Types.ObjectId, ref: 'Category', default: null },
+  subcategory: { type: Schema.Types.ObjectId, ref: 'Subcategory', default: null },
   brand: { type: Schema.Types.ObjectId, ref: 'Brand', default: null },
   variants: [VariantSchema],
   isActive: { type: Boolean, default: true },
