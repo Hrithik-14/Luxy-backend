@@ -51,10 +51,14 @@ router.post('/add', auth, role.check(ROLES.Admin), async (req, res) => {
       return res.status(400).json({ error: 'You must enter description & name.' });
     }
 
-    let imageUrl = null;
+    let imageUrl = "";
     if (image && image.startsWith('data:image')) {
-      const upload = await cloudinary.uploader.upload(image, { folder: 'categories' });
-      imageUrl = upload.secure_url;
+      try {
+        const upload = await cloudinary.uploader.upload(image, { folder: 'categories' });
+        imageUrl = upload.secure_url;
+      } catch (err) {
+        console.error('Cloudinary upload failed:', err);
+      }
     }
 
     const category = new Category({

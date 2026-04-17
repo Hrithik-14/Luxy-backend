@@ -6,11 +6,10 @@ Mongoose.plugin(slug, { separator: '-', lang: 'en', truncate: 120 });
 
 const VariantSchema = new Schema({
   color: { type: String, trim: true, required: true },
-  price: { type: Number, required: true },
+  price: { type: Number },
   stock: { type: Number, default: 0 },
   images: [{ type: String }],
-  // scalable: add sizes/discounts here later
-  sizes: [{ size: String, stock: Number }],
+  sizes: [{ size: String, stock: Number, price: Number }],
   discount: { type: Number, default: 0 },
   isDefault: { type: Boolean, default: false }
 }, { _id: true });
